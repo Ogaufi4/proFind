@@ -1,0 +1,7 @@
+import { useState } from 'react';
+import { Alert, TextInput } from 'react-native';
+import { router } from 'expo-router';
+import { Field, PrimaryButton, inputStyle } from '@/components/ui';
+import { FormScreen } from '@/components/form-screen';
+import { useAuth } from '@/context/auth-context';
+export default function VerifyPhone(){const {auth,sendPhoneOtp,verifyPhoneOtp}=useAuth();const[phone,setPhone]=useState('+27');const[token,setToken]=useState('');const[sent,setSent]=useState(false);if(!auth){router.replace('/sign-in');return null;}const send=async()=>{if(!/^\+[1-9]\d{7,14}$/.test(phone))return Alert.alert('Invalid phone','Use international format, for example +27821234567.');const r=await sendPhoneOtp(phone);if(r.error)Alert.alert('Unable to send',r.error);else setSent(true)};const verify=async()=>{const r=await verifyPhoneOtp(phone,token);if(r.error)Alert.alert('Verification failed',r.error);else{Alert.alert('Phone verified');router.replace('/account')}};return <FormScreen title="Verify your phone" body="A verified phone is required before publishing. OTP attempts are rate-limited by the authentication service."><Field label="Mobile number"><TextInput style={inputStyle} value={phone} onChangeText={setPhone} keyboardType="phone-pad"/></Field>{sent&&<Field label="6-digit code"><TextInput style={inputStyle} value={token} onChangeText={setToken} keyboardType="number-pad" maxLength={6}/></Field>}<PrimaryButton onPress={sent?verify:send}>{sent?'Verify code':'Send code'}</PrimaryButton></FormScreen>}

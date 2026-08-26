@@ -6,19 +6,21 @@ import { router } from 'expo-router';
 import { Header, PrimaryButton } from '@/components/ui';
 import { PropertyCard } from '@/components/property-card';
 import { useApp } from '@/context/app-context';
-import { properties } from '@/data/properties';
+import { propertyRepository } from '@/lib/property-repository';
 import { storage } from '@/lib/storage';
 import { colors, fonts } from '@/theme/tokens';
 import type { TransactionMode } from '@/types';
 
 const hero = require('../../assets/properties/hero-villa.png');
-const stats = [['32,000+', 'Active listings'], ['R 2.4m', 'Avg. sale price'], ['8,500+', 'Verified agents'], ['15 yrs', 'Market leaders']];
+const stats = [['32,000+', 'Active listings'], ['R 2.4m', 'Avg. sale price'], ['8,500+', 'Agent profiles'], ['15 yrs', 'Market leaders']];
 
 export default function HomeScreen() {
   const { search, setSearch } = useApp();
   const [typeOpen, setTypeOpen] = useState(false);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
+  const [featured, setFeatured] = useState<Awaited<ReturnType<typeof propertyRepository.all>>>([]);
   useEffect(() => { storage.onboardingComplete().then((complete) => { if (!complete) router.replace('/onboarding'); else setOnboardingChecked(true); }); }, []);
+  useEffect(() => { void propertyRepository.all().then((items) => setFeatured(items.filter((item) => item.featured).slice(0, 4))).catch(() => setFeatured([])); }, []);
   if (!onboardingChecked) return <View style={styles.root} />;
   const submit = () => { void storage.saveSearch(search); router.push('/results'); };
   return <ScrollView style={styles.root} contentContainerStyle={styles.scroll} stickyHeaderIndices={[]}>
@@ -35,7 +37,7 @@ export default function HomeScreen() {
       </View>
     </ImageBackground>
     <View style={styles.stats}>{stats.map(([value, label]) => <View key={label} style={styles.stat}><Text style={styles.statValue}>{value}</Text><Text style={styles.statLabel}>{label}</Text></View>)}</View>
-    <View style={styles.section}><Text style={styles.sectionTitle}>Featured Properties</Text><Text style={styles.sectionBody}>Hand-picked exclusive properties curated by our real estate experts.</Text><View style={styles.cardList}>{properties.filter((item) => item.featured).slice(0, 4).map((property) => <PropertyCard key={property.id} property={property} />)}</View><PrimaryButton variant="outline" onPress={() => router.push('/results')}>View all listings</PrimaryButton></View>
+    <View style={styles.section}><Text style={styles.sectionTitle}>Featured Properties</Text><Text style={styles.sectionBody}>Hand-picked exclusive properties curated by our real estate experts.</Text><View style={styles.cardList}>{featured.map((property) => <PropertyCard key={property.id} property={property} />)}</View><PrimaryButton variant="outline" onPress={() => router.push('/results')}>View all listings</PrimaryButton></View>
     <View style={styles.seller}><Text style={styles.sellerTitle}>Looking to sell your{`\n`}property?</Text><Text style={styles.sellerBody}>Connect with top-rated agents in your area and get the best price for your home.</Text><PrimaryButton variant="white" onPress={() => router.push('/agents')}>Find an Agent</PrimaryButton><PrimaryButton variant="outline" onPress={() => router.push('/valuation')}>Get Home Valuation</PrimaryButton></View>
   </ScrollView>;
 }

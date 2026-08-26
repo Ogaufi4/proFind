@@ -1,25 +1,26 @@
 import { useEffect, useState } from 'react';
 import { Alert, Linking, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Bath, BedDouble, CarFront, Check, Heart, Mail, MapPin, Maximize, Phone, Share2 } from 'lucide-react-native';
 import { Page } from '@/components/page';
 import { Badge, EmptyState, PrimaryButton } from '@/components/ui';
 import { useApp } from '@/context/app-context';
 import { agents } from '@/data/properties';
-import { formatPrice, localPropertyRepository } from '@/lib/property-repository';
+import { formatPrice, propertyRepository } from '@/lib/property-repository';
+import { useAuth } from '@/context/auth-context';
 import { colors, fonts, shadow } from '@/theme/tokens';
 import type { Property } from '@/types';
 
 async function openLink(url: string, label: string) { try { if (await Linking.canOpenURL(url)) await Linking.openURL(url); else Alert.alert(`${label} unavailable`, `This device cannot open ${label}.`); } catch { Alert.alert(`${label} unavailable`, 'Please try again on a configured device.'); } }
 
 export default function PropertyDetails() {
-  const { id } = useLocalSearchParams<{ id: string }>(); const [property, setProperty] = useState<Property>(); const [imageIndex, setImageIndex] = useState(0); const { favorites, toggleFavorite } = useApp();
-  useEffect(() => { if (id) void localPropertyRepository.byId(id).then(setProperty); }, [id]);
+  const { id } = useLocalSearchParams<{ id: string }>(); const [property, setProperty] = useState<Property>(); const [imageIndex, setImageIndex] = useState(0); const { favorites, toggleFavorite } = useApp(); const { auth } = useAuth();
+  useEffect(() => { if (id) void propertyRepository.byId(id).then(setProperty); }, [id]);
   if (!property) return <Page back><EmptyState title="Property unavailable" body="This listing may have been removed or the link is incorrect." /></Page>;
-  const agent = agents.find((item) => item.id === property.agentId)!; const saved = favorites.includes(property.id);
+  const agent = agents.find((item) => item.id === property.agentId); const saved = favorites.includes(property.id);
   return <Page back contentContainerStyle={styles.page}>
-    <View style={styles.actions}><Pressable onPress={() => Share.share({ title: property.title, message: `${property.title} — ${formatPrice(property)}` })} style={styles.action}><Share2 size={20} color={colors.ink} /><Text style={styles.actionText}>Share</Text></Pressable><Pressable onPress={() => toggleFavorite(property.id)} style={styles.action}><Heart size={20} color={colors.ink} fill={saved ? colors.blue : 'transparent'} /><Text style={styles.actionText}>{saved ? 'Saved' : 'Save'}</Text></Pressable></View>
+    <View style={styles.actions}><Pressable onPress={() => Share.share({ title: property.title, message: `${property.title} — ${formatPrice(property)}` })} style={styles.action}><Share2 size={20} color={colors.ink} /><Text style={styles.actionText}>Share</Text></Pressable><Pressable onPress={() => auth ? toggleFavorite(property.id) : router.push('/sign-in')} style={styles.action}><Heart size={20} color={colors.ink} fill={saved ? colors.blue : 'transparent'} /><Text style={styles.actionText}>{saved ? 'Saved' : 'Save'}</Text></Pressable></View>
     <Image source={property.images[imageIndex].source} contentFit="cover" style={styles.hero} accessibilityLabel={property.images[imageIndex].alt} />
     <View style={styles.thumbs}>{property.images.map((image, index) => <Pressable key={image.id} onPress={() => setImageIndex(index)} style={[styles.thumbWrap, imageIndex === index && styles.thumbSelected]}><Image source={image.source} contentFit="cover" style={styles.thumb} accessibilityLabel={image.alt} /></Pressable>)}</View>
     <View style={styles.badges}><Badge>{property.mode === 'rent' ? 'For rent' : property.mode === 'commercial' ? 'Commercial' : 'For sale'}</Badge><Badge tone="soft">{property.type}</Badge></View>
@@ -28,7 +29,9 @@ export default function PropertyDetails() {
     <View style={styles.card}><View style={styles.specGrid}><Spec icon={<BedDouble />} value={property.features.bedrooms} label="Bedrooms" /><Spec icon={<Bath />} value={property.features.bathrooms} label="Bathrooms" /><Spec icon={<CarFront />} value={property.features.garages} label="Garages" /><Spec icon={<Maximize />} value={`${property.features.floorSize} m²`} label="Floor Size" /></View></View>
     <View style={styles.card}><Text style={styles.cardTitle}>Property Description</Text><Text style={styles.body}>{property.description}</Text></View>
     <View style={styles.card}><Text style={styles.cardTitle}>Features & Amenities</Text><View style={styles.amenities}>{property.amenities.map((amenity) => <View key={amenity.id} style={styles.amenity}><View style={styles.check}><Check size={14} color={colors.green} strokeWidth={3} /></View><Text style={styles.amenityText}>{amenity.label}</Text></View>)}</View></View>
-    <View style={styles.agentCard}><View style={styles.agentTop}><Text style={styles.agentTopText}>Contact Agent</Text></View><View style={styles.avatar}><Text style={styles.avatarText}>{agent.name[0]}</Text></View><Text style={styles.agentName}>{agent.name}</Text><Text style={styles.agency}>{agent.agency}</Text><View style={styles.contactButtons}><PrimaryButton icon={<Phone color={colors.white} />} onPress={() => openLink(`tel:${agent.phone}`, 'Phone')}>{agent.phone.replace('+27', '+27 ')}</PrimaryButton><PrimaryButton variant="green" onPress={() => openLink(`https://wa.me/${agent.whatsapp}?text=${encodeURIComponent(`Hi ${agent.name}, I am interested in ${property.title}.`)}`, 'WhatsApp')}>WhatsApp</PrimaryButton><PrimaryButton variant="outline" icon={<Mail color={colors.blue} />} onPress={() => openLink(`mailto:${agent.email}?subject=${encodeURIComponent(property.title)}`, 'Email')}>Email Agent</PrimaryButton></View></View>
+    {agent ? <View style={styles.agentCard}><View style={styles.agentTop}><Text style={styles.agentTopText}>Contact Agent</Text></View><View style={styles.avatar}><Text style={styles.avatarText}>{agent.name[0]}</Text></View><Text style={styles.agentName}>{agent.name}</Text><Text style={styles.agency}>{agent.agency}</Text><View style={styles.contactButtons}>{auth ? <><PrimaryButton icon={<Phone color={colors.white} />} onPress={() => openLink(`tel:${agent.phone}`, 'Phone')}>{agent.phone.replace('+27', '+27 ')}</PrimaryButton><PrimaryButton variant="green" onPress={() => openLink(`https://wa.me/${agent.whatsapp}?text=${encodeURIComponent(`Hi ${agent.name}, I am interested in ${property.title}.`)}`, 'WhatsApp')}>WhatsApp</PrimaryButton><PrimaryButton variant="outline" icon={<Mail color={colors.blue} />} onPress={() => openLink(`mailto:${agent.email}?subject=${encodeURIComponent(property.title)}`, 'Email')}>Email Agent</PrimaryButton></> : <PrimaryButton onPress={() => router.push('/sign-in')}>Sign in to contact</PrimaryButton>}</View></View> : null}
+    <PrimaryButton onPress={() => auth ? router.push({ pathname: '/enquiry', params: { listingId: property.id } }) : router.push('/sign-in')}>Send secure enquiry</PrimaryButton>
+    <PrimaryButton variant="outline" onPress={() => auth ? router.push({ pathname: '/report', params: { listingId: property.id } }) : router.push('/sign-in')}>Report this listing</PrimaryButton>
     <Pressable onPress={() => openLink(`https://maps.google.com/?q=${property.latitude},${property.longitude}`, 'Maps')} style={styles.map}><MapPin color={colors.white} size={32} /><Text style={styles.mapText}>View on Map</Text></Pressable>
   </Page>;
 }

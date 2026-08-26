@@ -5,14 +5,14 @@ import { Page } from '@/components/page';
 import { EmptyState, PrimaryButton, inputStyle } from '@/components/ui';
 import { PropertyCard } from '@/components/property-card';
 import { useApp } from '@/context/app-context';
-import { localPropertyRepository } from '@/lib/property-repository';
+import { propertyRepository } from '@/lib/property-repository';
 import { colors, fonts } from '@/theme/tokens';
 import type { Property, SortOption } from '@/types';
 
 export default function ResultsScreen() {
   const { search, filters, setFilters, sort, setSort } = useApp();
   const [items, setItems] = useState<Property[]>([]); const [open, setOpen] = useState(false);
-  useEffect(() => { void localPropertyRepository.search(search, filters, sort).then(setItems); }, [search, filters, sort]);
+  useEffect(() => { void propertyRepository.search(search, filters, sort).then(setItems).catch(() => setItems([])); }, [search, filters, sort]);
   return <Page back contentContainerStyle={styles.page}>
     <View style={styles.titleRow}><View><Text style={styles.title}>Properties</Text><Text style={styles.count}>{items.length} results · {search.mode}</Text></View><Pressable onPress={() => setOpen(true)} style={styles.filterButton}><SlidersHorizontal color={colors.blue} /><Text style={styles.filterText}>Filters</Text></Pressable></View>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sortRow}>{([['relevance','Relevant'],['newest','Newest'],['price-asc','Price ↑'],['price-desc','Price ↓']] as [SortOption,string][]).map(([value,label]) => <Pressable key={value} onPress={() => setSort(value)} style={[styles.sortChip, sort === value && styles.sortChipActive]}><Text style={[styles.sortText, sort === value && styles.sortTextActive]}>{label}</Text></Pressable>)}</ScrollView>

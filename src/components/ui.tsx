@@ -4,6 +4,7 @@ import { Search, Menu, X, Heart, ArrowLeft } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, fonts, shadow } from '@/theme/tokens';
+import { useAuth } from '@/context/auth-context';
 
 export function Logo({ light = false }: { light?: boolean }) {
   return <View style={styles.logoWrap}><View style={[styles.logoMark, light && styles.logoMarkLight]}><Search size={28} color={light ? colors.blue : colors.white} strokeWidth={2} /></View><Text style={[styles.logoText, light && { color: colors.white }]}>PropFind</Text></View>;
@@ -17,6 +18,7 @@ const menuSections: [string, string[]][] = [
 
 export function Header({ back = false, transparent = false }: { back?: boolean; transparent?: boolean }) {
   const [open, setOpen] = useState(false);
+  const { auth } = useAuth();
   return <>
     <SafeAreaView edges={['top']} style={[styles.header, transparent && styles.headerTransparent]}>
       <View style={styles.headerInner}>
@@ -28,11 +30,13 @@ export function Header({ back = false, transparent = false }: { back?: boolean; 
       <SafeAreaView style={styles.menuSheet}>
         <View style={styles.menuTop}><Logo /><Pressable accessibilityLabel="Close navigation menu" onPress={() => setOpen(false)}><X size={32} color={colors.ink} /></Pressable></View>
         <ScrollView contentContainerStyle={styles.menuContent}>
-          <Pressable onPress={() => { setOpen(false); router.push('/favorites'); }} style={styles.favoriteMenu}><Heart color={colors.blue} /><Text style={styles.favoriteMenuText}>Saved properties</Text></Pressable>
+          <Pressable onPress={() => { setOpen(false); router.push(auth ? '/favorites' : '/sign-in'); }} style={styles.favoriteMenu}><Heart color={colors.blue} /><Text style={styles.favoriteMenuText}>Saved properties</Text></Pressable>
+          <Pressable onPress={() => { setOpen(false); router.push(auth ? '/account' : '/sign-in'); }} style={styles.favoriteMenu}><Text style={styles.favoriteMenuText}>{auth ? 'Account & security' : 'Sign in'}</Text></Pressable>
           {menuSections.map(([heading, links]) => <View key={heading} style={styles.menuSection}><Text style={styles.menuHeading}>{heading}</Text>{(links as string[]).map((link) => <Pressable key={link} onPress={() => {
             setOpen(false);
             if (link === 'Find an Estate Agent') router.push('/agents');
             else if (link === 'Sell Your Property') router.push('/valuation');
+            else if (link === 'Agent Portal Login') router.push(auth ? '/account' : '/sign-in');
             else if (link.includes('Sale') || link.includes('Rent') || link.includes('Commercial')) router.push('/results');
           }}><Text style={styles.menuLink}>{link}</Text></Pressable>)}</View>)}
         </ScrollView>
